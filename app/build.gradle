@@ -26,7 +26,7 @@ android {
         }
         dependencies {
             // Ice dependency
-            classpath 'com.zeroc:ice:3.7.10'
+            classpath libs.ice.v3710
         }
     }
 
@@ -55,7 +55,7 @@ slice {
 
 dependencies {
     // Ice dependency
-    implementation 'com.zeroc:ice:3.7.10'
+    implementation libs.ice.v3710
 
     // Other dependencies...
     implementation libs.appcompat
