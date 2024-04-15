@@ -1,0 +1,69 @@
+plugins {
+    id 'com.android.application'
+    id 'com.zeroc.gradle.ice-builder.slice' version '1.5.0'
+    // Other plugins...
+}
+
+android {
+    compileSdk 34
+
+    defaultConfig {
+        namespace 'com.example.spotiflop'
+        applicationId "com.example.spotiflop"
+        minSdk 29
+        targetSdk 34
+        versionCode 1
+        versionName "1.0"
+        testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
+    }
+
+    buildscript {
+        repositories {
+            mavenCentral()
+            maven {
+                url "https://plugins.gradle.org/m2/"
+            }
+        }
+        dependencies {
+            // Ice dependency
+            classpath 'com.zeroc:ice:3.7.10'
+        }
+    }
+
+    buildTypes {
+        release {
+            minifyEnabled false
+            proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
+        }
+    }
+
+    compileOptions {
+        sourceCompatibility JavaVersion.VERSION_1_8
+        targetCompatibility JavaVersion.VERSION_1_8
+    }
+
+    buildFeatures {
+        viewBinding true
+    }
+}
+
+slice {
+    java {
+        srcDir = '.'
+    }
+}
+
+dependencies {
+    // Ice dependency
+    implementation 'com.zeroc:ice:3.7.10'
+
+    // Other dependencies...
+    implementation libs.appcompat
+    implementation libs.material
+    implementation libs.constraintlayout
+    implementation libs.navigation.fragment
+    implementation libs.navigation.ui
+    testImplementation libs.junit
+    androidTestImplementation libs.ext.junit
+    androidTestImplementation libs.espresso.core
+}
