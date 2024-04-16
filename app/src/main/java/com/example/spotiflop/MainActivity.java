@@ -1,13 +1,20 @@
 package com.example.spotiflop;
 
+import android.content.ActivityNotFoundException;
+import android.content.Intent;
+import android.content.pm.PackageManager;
 import android.os.Bundle;
 
 import com.google.android.material.snackbar.Snackbar;
 
+import androidx.annotation.NonNull;
 import androidx.appcompat.app.AppCompatActivity;
 
+import android.speech.RecognizerIntent;
+import android.util.Log;
 import android.view.View;
 
+import androidx.fragment.app.Fragment;
 import androidx.navigation.NavController;
 import androidx.navigation.Navigation;
 import androidx.navigation.ui.AppBarConfiguration;
@@ -17,6 +24,11 @@ import com.example.spotiflop.databinding.ActivityMainBinding;
 
 import android.view.Menu;
 import android.view.MenuItem;
+import android.widget.TextView;
+import android.widget.Toast;
+
+import java.util.ArrayList;
+import java.util.Locale;
 
 import Demo.PrinterPrx;
 
@@ -26,6 +38,7 @@ public class MainActivity extends AppCompatActivity {
     private ActivityMainBinding binding;
     private static PrinterPrx printerPrx;
     private static com.zeroc.Ice.Communicator communicator;
+    private static final int REQUEST_RECORD_AUDIO_PERMISSION = 200;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -43,17 +56,17 @@ public class MainActivity extends AppCompatActivity {
         binding.fab.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View view) {
-                Snackbar.make(view, "Replace with your own action", Snackbar.LENGTH_LONG)
+                Snackbar.make(view, "Parlez !", Snackbar.LENGTH_LONG)
                         .setAnchorView(R.id.fab)
                         .setAction("Action", null).show();
-                System.out.println(printerPrx.getSongList());
+                startRecording();
             }
         });
 
         try {
             String[] customArgs = new String[]{"--Ice.MessageSizeMax=0"};
             communicator = com.zeroc.Ice.Util.initialize(customArgs);
-            com.zeroc.Ice.ObjectPrx base = communicator.stringToProxy("SimplePrinter:tcp -h 192.168.56.1 -p 10000");
+            com.zeroc.Ice.ObjectPrx base = communicator.stringToProxy("SimplePrinter:tcp -h 192.168.1.75 -p 10000");
             PrinterPrx printer = PrinterPrx.checkedCast(base);
             if (printer == null) {
                 throw new Error("Invalid proxy");
@@ -64,6 +77,35 @@ public class MainActivity extends AppCompatActivity {
             e.printStackTrace();
         }
         printerPrx.getSongList();
+    }
+
+    private void startRecording() {
+        Intent intent = new Intent(RecognizerIntent.ACTION_RECOGNIZE_SPEECH);
+        intent.putExtra(RecognizerIntent.EXTRA_LANGUAGE_MODEL,
+                RecognizerIntent.LANGUAGE_MODEL_FREE_FORM);
+        intent.putExtra(RecognizerIntent.EXTRA_LANGUAGE, Locale.getDefault());
+        intent.putExtra(RecognizerIntent.EXTRA_PROMPT, "Parlez maintenant...");
+        try {
+            startActivityForResult(intent, REQUEST_RECORD_AUDIO_PERMISSION);
+        } catch (ActivityNotFoundException e) {
+            Toast.makeText(getApplicationContext(),
+                    "Reconnaissance vocale non prise en charge sur cet appareil.",
+                    Toast.LENGTH_SHORT).show();
+        }
+    }
+
+    protected void onActivityResult(int requestCode, int resultCode, Intent data) {
+        super.onActivityResult(requestCode, resultCode, data);
+        if (requestCode == REQUEST_RECORD_AUDIO_PERMISSION) {
+            if (resultCode == RESULT_OK && data != null) {
+                ArrayList<String> result = data.getStringArrayListExtra(RecognizerIntent.EXTRA_RESULTS);
+                if (result != null && !result.isEmpty()) {
+                    String transcription = result.get(0);
+                    Log.d("Transcription", transcription);
+                    Snackbar.make(binding.getRoot(), transcription, Snackbar.LENGTH_LONG).show();
+                }
+            }
+        }
     }
 
     @Override
@@ -80,7 +122,7 @@ public class MainActivity extends AppCompatActivity {
         // as you specify a parent activity in AndroidManifest.xml.
         int id = item.getItemId();
 
-        //noinspection SimplifiableIfStatement
+        // noinspection SimplifiableIfStatement
         if (id == R.id.action_settings) {
             return true;
         }
