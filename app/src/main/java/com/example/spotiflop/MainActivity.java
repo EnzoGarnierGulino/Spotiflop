@@ -1,13 +1,19 @@
 package com.example.spotiflop;
 
 import android.content.ActivityNotFoundException;
+import android.content.Context;
 import android.content.Intent;
 import android.content.pm.PackageManager;
+import android.media.AudioAttributes;
+import android.media.AudioManager;
+import android.media.MediaPlayer;
+import android.net.Uri;
 import android.os.Bundle;
 
 import com.google.android.material.snackbar.Snackbar;
 
 import androidx.annotation.NonNull;
+import androidx.annotation.OptIn;
 import androidx.appcompat.app.AppCompatActivity;
 
 import android.speech.RecognizerIntent;
@@ -15,6 +21,11 @@ import android.util.Log;
 import android.view.View;
 
 import androidx.fragment.app.Fragment;
+import androidx.media3.common.MediaItem;
+import androidx.media3.common.util.UnstableApi;
+import androidx.media3.exoplayer.ExoPlayer;
+import androidx.media3.exoplayer.rtsp.RtspMediaSource;
+import androidx.media3.exoplayer.source.MediaSource;
 import androidx.navigation.NavController;
 import androidx.navigation.Navigation;
 import androidx.navigation.ui.AppBarConfiguration;
@@ -26,6 +37,9 @@ import android.view.Menu;
 import android.view.MenuItem;
 import android.widget.TextView;
 import android.widget.Toast;
+
+import org.videolan.libvlc.LibVLC;
+import org.videolan.libvlc.Media;
 
 import java.util.ArrayList;
 import java.util.Locale;
@@ -39,6 +53,8 @@ public class MainActivity extends AppCompatActivity {
     private static PrinterPrx printerPrx;
     private static com.zeroc.Ice.Communicator communicator;
     private static final int REQUEST_RECORD_AUDIO_PERMISSION = 200;
+    private LibVLC libVLC;
+    private org.videolan.libvlc.MediaPlayer mediaPlayer;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -53,30 +69,36 @@ public class MainActivity extends AppCompatActivity {
         appBarConfiguration = new AppBarConfiguration.Builder(navController.getGraph()).build();
         NavigationUI.setupActionBarWithNavController(this, navController, appBarConfiguration);
 
+        setupMediaPlayer();
+
         binding.fab.setOnClickListener(new View.OnClickListener() {
-            @Override
+            @OptIn(markerClass = UnstableApi.class) @Override
             public void onClick(View view) {
                 Snackbar.make(view, "Parlez !", Snackbar.LENGTH_LONG)
                         .setAnchorView(R.id.fab)
                         .setAction("Action", null).show();
-                startRecording();
+//                startRecording();
+                if (mediaPlayer.isPlaying()) {
+                    mediaPlayer.pause();
+                } else {
+                    mediaPlayer.play();
+                }
+
             }
         });
 
         try {
             String[] customArgs = new String[]{"--Ice.MessageSizeMax=0"};
             communicator = com.zeroc.Ice.Util.initialize(customArgs);
-            com.zeroc.Ice.ObjectPrx base = communicator.stringToProxy("SimplePrinter:tcp -h 192.168.1.75 -p 10000");
+            com.zeroc.Ice.ObjectPrx base = communicator.stringToProxy("SimplePrinter:tcp -h 192.168.1.43 -p 10000");
             PrinterPrx printer = PrinterPrx.checkedCast(base);
             if (printer == null) {
                 throw new Error("Invalid proxy");
             }
             MainActivity.printerPrx = printer;
-            printerPrx.getSongList();
         } catch (Exception e) {
             e.printStackTrace();
         }
-        printerPrx.getSongList();
     }
 
     private void startRecording() {
@@ -92,6 +114,18 @@ public class MainActivity extends AppCompatActivity {
                     "Reconnaissance vocale non prise en charge sur cet appareil.",
                     Toast.LENGTH_SHORT).show();
         }
+    }
+
+    private void setupMediaPlayer() {
+        libVLC = new LibVLC(this);
+        mediaPlayer = new org.videolan.libvlc.MediaPlayer(libVLC);
+        String rtspUri = "rtsp://192.168.1.43:8554/stream";
+        Media media = new Media(libVLC, Uri.parse(rtspUri));
+        media.setDefaultMediaPlayerOptions();
+//        media.addOption("--network-caching=<1000ms>");
+        media.addOption("--no-video");
+        media.addOption("-vvv");
+        mediaPlayer.setMedia(media);
     }
 
     protected void onActivityResult(int requestCode, int resultCode, Intent data) {
