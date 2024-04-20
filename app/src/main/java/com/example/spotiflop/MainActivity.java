@@ -80,6 +80,7 @@ public class MainActivity extends AppCompatActivity {
 //                startRecording();
                 if (mediaPlayer.isPlaying()) {
                     mediaPlayer.pause();
+                    setupMediaPlayer();
                 } else {
                     mediaPlayer.play();
                 }
@@ -122,7 +123,7 @@ public class MainActivity extends AppCompatActivity {
         String rtspUri = "rtsp://192.168.1.43:8554/stream";
         Media media = new Media(libVLC, Uri.parse(rtspUri));
         media.setDefaultMediaPlayerOptions();
-//        media.addOption("--network-caching=<1000ms>");
+        media.addOption("--network-caching=<1000ms>");
         media.addOption("--no-video");
         media.addOption("-vvv");
         mediaPlayer.setMedia(media);
