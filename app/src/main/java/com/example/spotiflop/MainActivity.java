@@ -55,6 +55,7 @@ public class MainActivity extends AppCompatActivity {
     private static final int REQUEST_RECORD_AUDIO_PERMISSION = 200;
     private LibVLC libVLC;
     private org.videolan.libvlc.MediaPlayer mediaPlayer;
+    private String url;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -69,7 +70,8 @@ public class MainActivity extends AppCompatActivity {
         appBarConfiguration = new AppBarConfiguration.Builder(navController.getGraph()).build();
         NavigationUI.setupActionBarWithNavController(this, navController, appBarConfiguration);
 
-        setupMediaPlayer();
+        libVLC = new LibVLC(this);
+        mediaPlayer = new org.videolan.libvlc.MediaPlayer(libVLC);
 
         binding.fab.setOnClickListener(new View.OnClickListener() {
             @OptIn(markerClass = UnstableApi.class) @Override
@@ -80,8 +82,11 @@ public class MainActivity extends AppCompatActivity {
 //                startRecording();
                 if (mediaPlayer.isPlaying()) {
                     mediaPlayer.pause();
-                    setupMediaPlayer();
+                    setupMediaPlayer(url);
                 } else {
+                    url = printerPrx.playMusic("BeepBox-Song");
+                    setupMediaPlayer(url);
+                    System.out.println("Playing music...");
                     mediaPlayer.play();
                 }
 
@@ -117,11 +122,9 @@ public class MainActivity extends AppCompatActivity {
         }
     }
 
-    private void setupMediaPlayer() {
-        libVLC = new LibVLC(this);
-        mediaPlayer = new org.videolan.libvlc.MediaPlayer(libVLC);
-        String rtspUri = "rtsp://192.168.1.43:8554/stream";
-        Media media = new Media(libVLC, Uri.parse(rtspUri));
+    private void setupMediaPlayer(String url) {
+        System.out.println("Received URL: " + url);
+        Media media = new Media(libVLC, Uri.parse(url));
         media.setDefaultMediaPlayerOptions();
         media.addOption("--network-caching=<1000ms>");
         media.addOption("--no-video");
