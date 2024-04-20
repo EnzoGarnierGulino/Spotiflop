@@ -84,9 +84,8 @@ public class MainActivity extends AppCompatActivity {
                     mediaPlayer.pause();
                     setupMediaPlayer(url);
                 } else {
-                    url = printerPrx.playMusic("BeepBox-Song");
+                    url = printerPrx.playMusic("morshu");
                     setupMediaPlayer(url);
-                    System.out.println("Playing music...");
                     mediaPlayer.play();
                 }
 
@@ -123,7 +122,6 @@ public class MainActivity extends AppCompatActivity {
     }
 
     private void setupMediaPlayer(String url) {
-        System.out.println("Received URL: " + url);
         Media media = new Media(libVLC, Uri.parse(url));
         media.setDefaultMediaPlayerOptions();
         media.addOption("--network-caching=<1000ms>");
