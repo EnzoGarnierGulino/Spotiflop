@@ -46,6 +46,12 @@ import org.json.JSONArray;
 import org.json.JSONException;
 import org.json.JSONObject;
 
+import java.io.BufferedReader;
+import java.io.IOException;
+import java.io.InputStreamReader;
+import java.io.OutputStream;
+import java.net.HttpURLConnection;
+import java.net.URL;
 import java.util.ArrayList;
 import java.util.Locale;
 
@@ -87,16 +93,15 @@ public class MainActivity extends AppCompatActivity {
                 Snackbar.make(view, "Parlez !", Snackbar.LENGTH_LONG)
                         .setAnchorView(R.id.fab)
                         .setAction("Action", null).show();
-                // startRecording();
-                if (mediaPlayer.isPlaying()) {
-                    mediaPlayer.pause();
-                    setupMediaPlayer(url);
-                } else {
-                    url = printerPrx.playMusic("morshu");
-                    setupMediaPlayer(url);
-                    mediaPlayer.play();
-                }
-
+                startRecording();
+//                if (mediaPlayer.isPlaying()) {
+//                    mediaPlayer.pause();
+//                    setupMediaPlayer(url);
+//                } else {
+//                    url = printerPrx.playMusic("morshu");
+//                    setupMediaPlayer(url);
+//                    mediaPlayer.play();
+//                }
             }
         });
 
@@ -174,11 +179,72 @@ public class MainActivity extends AppCompatActivity {
                 if (result != null && !result.isEmpty()) {
                     String transcription = result.get(0);
                     Log.d("Transcription", transcription);
+                    makeRequest(transcription);
                     Snackbar.make(binding.getRoot(), transcription, Snackbar.LENGTH_LONG).show();
                 }
             }
         }
     }
+
+    private void makeRequest(String transcription) {
+        Thread thread = new Thread(new Runnable() {
+            @Override
+            public void run() {
+                try {
+                    // Define the URL for the request
+                    String url = "http://82.66.48.233:42690/getObjectAndSubject?query=" + transcription;
+
+                    // Create a URL object from the string URL
+                    URL serverUrl = new URL(url);
+
+                    // Create a HttpURLConnection object to open the connection
+                    HttpURLConnection conn = (HttpURLConnection) serverUrl.openConnection();
+
+                    // Set the request method to POST
+                    conn.setRequestMethod("POST");
+
+                    // Set the content type
+                    conn.setRequestProperty("Content-Type", "text/plain; charset=UTF-8");
+                    conn.setRequestProperty("Accept", "application/json");
+                    conn.setDoOutput(true);
+
+                    // Get the response code
+                    int responseCode = conn.getResponseCode();
+                    Log.d("HTTP Response Code", String.valueOf(responseCode));
+
+                    // Read the response from the input stream
+                    BufferedReader in = new BufferedReader(new InputStreamReader(conn.getInputStream()));
+                    StringBuilder response = new StringBuilder();
+                    String inputLine;
+                    while ((inputLine = in.readLine()) != null) {
+                        response.append(inputLine);
+                    }
+                    in.close();
+
+                    // Parse the response JSON to extract the action and object
+                    JSONObject jsonResponse = new JSONObject(response.toString());
+                    String action = jsonResponse.getString("action");
+                    String object = jsonResponse.getString("sujet");
+
+                    // Display the action and object (e.g., using a Snackbar)
+                    String message = "Action: " + action + ", Object: " + object;
+                    runOnUiThread(new Runnable() {
+                        @Override
+                        public void run() {
+                            Snackbar.make(binding.getRoot(), message, Snackbar.LENGTH_LONG).show();
+                        }
+                    });
+
+                    // Disconnect the HttpURLConnection
+                    conn.disconnect();
+                } catch (IOException | JSONException e) {
+                    e.printStackTrace();
+                }
+            }
+        });
+        thread.start();
+    }
+
 
     @Override
     public boolean onCreateOptionsMenu(Menu menu) {
