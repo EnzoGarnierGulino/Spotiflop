@@ -30,6 +30,8 @@ import androidx.navigation.NavController;
 import androidx.navigation.Navigation;
 import androidx.navigation.ui.AppBarConfiguration;
 import androidx.navigation.ui.NavigationUI;
+import androidx.recyclerview.widget.LinearLayoutManager;
+import androidx.recyclerview.widget.RecyclerView;
 
 import com.example.spotiflop.databinding.ActivityMainBinding;
 
@@ -40,6 +42,9 @@ import android.widget.Toast;
 
 import org.videolan.libvlc.LibVLC;
 import org.videolan.libvlc.Media;
+import org.json.JSONArray;
+import org.json.JSONException;
+import org.json.JSONObject;
 
 import java.util.ArrayList;
 import java.util.Locale;
@@ -50,6 +55,9 @@ public class MainActivity extends AppCompatActivity {
 
     private AppBarConfiguration appBarConfiguration;
     private ActivityMainBinding binding;
+    private ArrayList<Song> songs;
+    private RecyclerView recyclerView;
+    private SongAdapter adapter;
     private static PrinterPrx printerPrx;
     private static com.zeroc.Ice.Communicator communicator;
     private static final int REQUEST_RECORD_AUDIO_PERMISSION = 200;
@@ -104,6 +112,34 @@ public class MainActivity extends AppCompatActivity {
         } catch (Exception e) {
             e.printStackTrace();
         }
+
+        String songListString = printerPrx.getSongList();
+        parseSongString(songListString);
+    }
+
+    private void parseSongString(String songListString) {
+        try {
+            JSONArray jsonArray = new JSONArray(songListString);
+            songs = new ArrayList<>();
+            for (int i = 0; i < jsonArray.length(); i++) {
+                JSONObject jsonObject = jsonArray.getJSONObject(i);
+                int id = jsonObject.getInt("id");
+                String title = jsonObject.getString("title");
+                String author = jsonObject.getString("author");
+                String path = jsonObject.getString("path");
+                songs.add(new Song(id, title, author, path));
+            }
+        } catch (JSONException e) {
+            e.printStackTrace();
+        }
+        setupRecyclerView();
+    }
+
+    private void setupRecyclerView() {
+        recyclerView = findViewById(R.id.recyclerView);
+        recyclerView.setLayoutManager(new LinearLayoutManager(this));
+        adapter = new SongAdapter(songs);
+        recyclerView.setAdapter(adapter);
     }
 
     private void startRecording() {
@@ -157,11 +193,6 @@ public class MainActivity extends AppCompatActivity {
         // automatically handle clicks on the Home/Up button, so long
         // as you specify a parent activity in AndroidManifest.xml.
         int id = item.getItemId();
-
-        // noinspection SimplifiableIfStatement
-        if (id == R.id.action_settings) {
-            return true;
-        }
 
         return super.onOptionsItemSelected(item);
     }
