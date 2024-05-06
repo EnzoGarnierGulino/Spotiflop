@@ -1,5 +1,7 @@
 package com.example.spotiflop;
 
+import android.content.Context;
+import android.net.Uri;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
@@ -9,16 +11,51 @@ import android.widget.TextView;
 import androidx.annotation.NonNull;
 import androidx.recyclerview.widget.RecyclerView;
 
+import org.videolan.libvlc.LibVLC;
+import org.videolan.libvlc.Media;
+import org.videolan.libvlc.MediaPlayer;
+import org.videolan.libvlc.util.VLCVideoLayout;
+
 import java.util.ArrayList;
+
+import Demo.PrinterPrx;
 
 public class SongAdapter extends RecyclerView.Adapter<SongAdapter.ViewHolder> {
     private static ArrayList<Song> songs = null;
+    private LibVLC libVLC;
+    private org.videolan.libvlc.MediaPlayer mediaPlayer;
+    private boolean streaming = false;
+    private PrinterPrx printerPrx;
 
-    public SongAdapter(ArrayList<Song> songs) {
+    public SongAdapter(ArrayList<Song> songs, Context context, PrinterPrx printerPrx) {
         SongAdapter.songs = songs;
+        libVLC = new LibVLC(context, new ArrayList<String>());
+        mediaPlayer = new org.videolan.libvlc.MediaPlayer(libVLC);
+        this.printerPrx = printerPrx;
+
+        mediaPlayer.setEventListener(new org.videolan.libvlc.MediaPlayer.EventListener() {
+            @Override
+            public void onEvent(org.videolan.libvlc.MediaPlayer.Event event) {
+                switch (event.type) {
+                    case org.videolan.libvlc.MediaPlayer.Event.EndReached:
+                        System.out.println("=========================================EndReached=========================================");
+                        break;
+                    case MediaPlayer.Event.Paused:
+                        System.out.println("=========================================Paused=========================================");
+                        break;
+                    case MediaPlayer.Event.Stopped:
+                        System.out.println("=========================================Stopped=========================================");
+                        break;
+                    case MediaPlayer.Event.Playing:
+                        System.out.println("=========================================Playing=========================================");
+                        break;
+                }
+            }
+        });
+
     }
 
-    public static class ViewHolder extends RecyclerView.ViewHolder {
+    public class ViewHolder extends RecyclerView.ViewHolder {
         public TextView textViewTitle;
         public TextView textViewAuthor;
         public Button playButton;
@@ -41,11 +78,41 @@ public class SongAdapter extends RecyclerView.Adapter<SongAdapter.ViewHolder> {
                         Song clickedSong = songs.get(position);
                         // Do something with the clicked song, such as playing it
                         System.out.println("clicked on element : " + clickedSong.getTitle());
+                        playSong(clickedSong.getTitle());
                     }
                 }
             });
         }
     }
+
+    private void setupMediaPlayer(String url) {
+        mediaPlayer = new org.videolan.libvlc.MediaPlayer(libVLC);
+        Media media = new Media(libVLC, Uri.parse(url));
+        media.setDefaultMediaPlayerOptions();
+        media.addOption("--network-caching=<1000ms>");
+//        media.addOption("--no-video");
+        mediaPlayer.setMedia(media);
+    }
+
+    public void playSong(String title) {
+        if (streaming) {
+            new Thread(new Runnable() {
+                @Override
+                public void run() {
+                    mediaPlayer.stop();
+                }
+            }).start();
+            streaming = false;
+            return;
+        }
+        String url = printerPrx.playMusic(title);
+        if (!streaming) {
+            setupMediaPlayer(url);
+            mediaPlayer.play();
+            streaming = true;
+        }
+    }
+
 
     @NonNull
     @Override

@@ -6,7 +6,6 @@ import android.content.Intent;
 import android.content.pm.PackageManager;
 import android.media.AudioAttributes;
 import android.media.AudioManager;
-import android.media.MediaPlayer;
 import android.net.Uri;
 import android.os.Bundle;
 
@@ -45,6 +44,8 @@ import org.videolan.libvlc.Media;
 import org.json.JSONArray;
 import org.json.JSONException;
 import org.json.JSONObject;
+import org.videolan.libvlc.MediaPlayer;
+import org.videolan.libvlc.util.VLCVideoLayout;
 
 import java.io.BufferedReader;
 import java.io.IOException;
@@ -54,6 +55,7 @@ import java.net.HttpURLConnection;
 import java.net.URL;
 import java.util.ArrayList;
 import java.util.Locale;
+import java.util.Objects;
 
 import Demo.PrinterPrx;
 
@@ -67,9 +69,6 @@ public class MainActivity extends AppCompatActivity {
     private static PrinterPrx printerPrx;
     private static com.zeroc.Ice.Communicator communicator;
     private static final int REQUEST_RECORD_AUDIO_PERMISSION = 200;
-    private LibVLC libVLC;
-    private org.videolan.libvlc.MediaPlayer mediaPlayer;
-    private String url;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -84,9 +83,6 @@ public class MainActivity extends AppCompatActivity {
         appBarConfiguration = new AppBarConfiguration.Builder(navController.getGraph()).build();
         NavigationUI.setupActionBarWithNavController(this, navController, appBarConfiguration);
 
-        libVLC = new LibVLC(this);
-        mediaPlayer = new org.videolan.libvlc.MediaPlayer(libVLC);
-
         binding.fab.setOnClickListener(new View.OnClickListener() {
             @OptIn(markerClass = UnstableApi.class) @Override
             public void onClick(View view) {
@@ -94,21 +90,13 @@ public class MainActivity extends AppCompatActivity {
                         .setAnchorView(R.id.fab)
                         .setAction("Action", null).show();
                 startRecording();
-//                if (mediaPlayer.isPlaying()) {
-//                    mediaPlayer.pause();
-//                    setupMediaPlayer(url);
-//                } else {
-//                    url = printerPrx.playMusic("morshu");
-//                    setupMediaPlayer(url);
-//                    mediaPlayer.play();
-//                }
             }
         });
 
         try {
             String[] customArgs = new String[]{"--Ice.MessageSizeMax=0"};
             communicator = com.zeroc.Ice.Util.initialize(customArgs);
-            com.zeroc.Ice.ObjectPrx base = communicator.stringToProxy("SimplePrinter:tcp -h 192.168.1.12 -p 10000");
+            com.zeroc.Ice.ObjectPrx base = communicator.stringToProxy("SimplePrinter:tcp -h 192.168.1.43 -p 10000");
             PrinterPrx printer = PrinterPrx.checkedCast(base);
             if (printer == null) {
                 throw new Error("Invalid proxy");
@@ -131,8 +119,7 @@ public class MainActivity extends AppCompatActivity {
                 int id = jsonObject.getInt("id");
                 String title = jsonObject.getString("title");
                 String author = jsonObject.getString("author");
-                String path = jsonObject.getString("path");
-                songs.add(new Song(id, title, author, path));
+                songs.add(new Song(id, title, author));
             }
         } catch (JSONException e) {
             e.printStackTrace();
@@ -143,7 +130,7 @@ public class MainActivity extends AppCompatActivity {
     private void setupRecyclerView() {
         recyclerView = findViewById(R.id.recyclerView);
         recyclerView.setLayoutManager(new LinearLayoutManager(this));
-        adapter = new SongAdapter(songs);
+        adapter = new SongAdapter(songs, this, printerPrx);
         recyclerView.setAdapter(adapter);
     }
 
@@ -161,16 +148,7 @@ public class MainActivity extends AppCompatActivity {
                     Toast.LENGTH_SHORT).show();
         }
     }
-
-    private void setupMediaPlayer(String url) {
-        Media media = new Media(libVLC, Uri.parse(url));
-        media.setDefaultMediaPlayerOptions();
-        media.addOption("--network-caching=<1000ms>");
-        media.addOption("--no-video");
-        media.addOption("-vvv");
-        mediaPlayer.setMedia(media);
-    }
-
+    
     protected void onActivityResult(int requestCode, int resultCode, Intent data) {
         super.onActivityResult(requestCode, resultCode, data);
         if (requestCode == REQUEST_RECORD_AUDIO_PERMISSION) {
