@@ -19,6 +19,7 @@ import org.videolan.libvlc.util.VLCVideoLayout;
 import java.util.ArrayList;
 
 import Demo.PrinterPrx;
+import Demo.StreamingInfo;
 
 public class SongAdapter extends RecyclerView.Adapter<SongAdapter.ViewHolder> {
     private static ArrayList<Song> songs = null;
@@ -105,9 +106,10 @@ public class SongAdapter extends RecyclerView.Adapter<SongAdapter.ViewHolder> {
             streaming = false;
             return;
         }
-        String url = printerPrx.playMusic(title);
+        StreamingInfo info = printerPrx.playMusic(title);
+        System.out.println("url : " + info.url + " duration : " + info.duration + " ip : " + info.clientIP);
         if (!streaming) {
-            setupMediaPlayer(url);
+            setupMediaPlayer(info.url);
             mediaPlayer.play();
             streaming = true;
         }
