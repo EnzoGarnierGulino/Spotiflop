@@ -17,6 +17,9 @@ import org.videolan.libvlc.MediaPlayer;
 import org.videolan.libvlc.util.VLCVideoLayout;
 
 import java.util.ArrayList;
+import java.util.List;
+import java.util.Timer;
+import java.util.TimerTask;
 
 import Demo.PrinterPrx;
 import Demo.StreamingInfo;
@@ -27,6 +30,7 @@ public class SongAdapter extends RecyclerView.Adapter<SongAdapter.ViewHolder> {
     private org.videolan.libvlc.MediaPlayer mediaPlayer;
     private boolean streaming = false;
     private PrinterPrx printerPrx;
+    private Timer endOfSongTimer;
 
     public SongAdapter(ArrayList<Song> songs, Context context, PrinterPrx printerPrx) {
         SongAdapter.songs = songs;
@@ -89,13 +93,17 @@ public class SongAdapter extends RecyclerView.Adapter<SongAdapter.ViewHolder> {
     private void setupMediaPlayer(String url) {
         mediaPlayer = new org.videolan.libvlc.MediaPlayer(libVLC);
         Media media = new Media(libVLC, Uri.parse(url));
-        media.setDefaultMediaPlayerOptions();
-        media.addOption("--network-caching=<1000ms>");
+//        media.setDefaultMediaPlayerOptions();
+//        media.addOption("--network-caching=<1000ms>");
 //        media.addOption("--no-video");
         mediaPlayer.setMedia(media);
     }
 
     public void playSong(String title) {
+        if (endOfSongTimer != null) {
+            endOfSongTimer.cancel();
+        }
+
         if (streaming) {
             new Thread(new Runnable() {
                 @Override
@@ -112,7 +120,51 @@ public class SongAdapter extends RecyclerView.Adapter<SongAdapter.ViewHolder> {
             setupMediaPlayer(info.url);
             mediaPlayer.play();
             streaming = true;
+            int durationSec = info.duration;
+
+            endOfSongTimer = new Timer();
+            endOfSongTimer.schedule(new TimerTask() {
+                @Override
+                public void run() {
+                    onSongFinished();
+                }
+            }, durationSec * 1000L);
+
+            Thread thread = new Thread(new Runnable() {
+                @Override
+                public void run() {
+                    try {
+                        List<Integer> list = new ArrayList<>();
+                        while (true) {
+                            int readBytes = mediaPlayer.getMedia().getStats().demuxReadBytes;
+                            if (!list.isEmpty() && readBytes != 0 && readBytes == list.get(list.size() - 1)) {
+                                list.add(readBytes);
+                                System.out.println(list);
+                                break;
+                            }
+                            else {
+                                list.add(readBytes);
+                            }
+                            Thread.sleep(1000);
+                        }
+                    } catch (InterruptedException e) {
+                        e.printStackTrace();
+                    }
+                }
+            });
+            thread.start();
         }
+    }
+
+    private void onSongFinished() {
+        System.out.println("=========================================Song Finished=========================================");
+//        streaming = false;
+//        new Thread(new Runnable() {
+//            @Override
+//            public void run() {
+//                mediaPlayer.stop();
+//            }
+//        }).start();
     }
 
 
