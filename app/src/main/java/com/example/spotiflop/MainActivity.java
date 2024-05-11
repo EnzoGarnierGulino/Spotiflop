@@ -101,7 +101,7 @@ public class MainActivity extends AppCompatActivity {
         try {
             String[] customArgs = new String[]{"--Ice.MessageSizeMax=0"};
             communicator = com.zeroc.Ice.Util.initialize(customArgs);
-            com.zeroc.Ice.ObjectPrx base = communicator.stringToProxy("SimplePrinter:tcp -h 192.168.1.43 -p 10000");
+            com.zeroc.Ice.ObjectPrx base = communicator.stringToProxy("SimplePrinter:tcp -h 192.168.1.12 -p 10000");
             PrinterPrx printer = PrinterPrx.checkedCast(base);
             if (printer == null) {
                 throw new Error("Invalid proxy");
@@ -124,7 +124,8 @@ public class MainActivity extends AppCompatActivity {
                 int id = jsonObject.getInt("id");
                 String title = jsonObject.getString("title");
                 String author = jsonObject.getString("author");
-                songs.add(new Song(id, title, author));
+                String coverart = jsonObject.getString("coverart");
+                songs.add(new Song(id, title, author, coverart));
             }
         } catch (JSONException e) {
             e.printStackTrace();

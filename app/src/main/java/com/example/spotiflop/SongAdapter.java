@@ -11,6 +11,7 @@ import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
 import android.widget.Button;
+import android.widget.ImageView;
 import android.widget.TextView;
 
 import androidx.annotation.NonNull;
@@ -29,6 +30,8 @@ import java.util.TimerTask;
 
 import Demo.PrinterPrx;
 import Demo.StreamingInfo;
+
+import com.squareup.picasso.Picasso;
 
 public class SongAdapter extends RecyclerView.Adapter<SongAdapter.ViewHolder> {
     private static ArrayList<Song> songs = null;
@@ -98,16 +101,16 @@ public class SongAdapter extends RecyclerView.Adapter<SongAdapter.ViewHolder> {
     public class ViewHolder extends RecyclerView.ViewHolder {
         public TextView textViewTitle;
         public TextView textViewAuthor;
-        public Button playButton;
+        public ImageView coverart;
 
 
         public ViewHolder(View itemView) {
             super(itemView);
             textViewTitle = itemView.findViewById(R.id.textViewTitle);
             textViewAuthor = itemView.findViewById(R.id.textViewAuthor);
-            playButton = itemView.findViewById(R.id.playButton);
+            coverart = itemView.findViewById(R.id.coverart);
 
-            playButton.setOnClickListener(new View.OnClickListener() {
+            coverart.setOnClickListener(new View.OnClickListener() {
                 @Override
                 public void onClick(View v) {
                     int position = getAdapterPosition();
@@ -162,8 +165,6 @@ public class SongAdapter extends RecyclerView.Adapter<SongAdapter.ViewHolder> {
                     setupEndSongDetection();
                 }
             }, durationMS);
-
-
         }
     }
 
@@ -231,7 +232,7 @@ public class SongAdapter extends RecyclerView.Adapter<SongAdapter.ViewHolder> {
         Song song = songs.get(position);
         holder.textViewTitle.setText(song.getTitle());
         holder.textViewAuthor.setText(song.getAuthor());
-        holder.playButton.setText("Play");
+        Picasso.get().load(song.getCoverart()).into(holder.coverart);
     }
 
     @Override

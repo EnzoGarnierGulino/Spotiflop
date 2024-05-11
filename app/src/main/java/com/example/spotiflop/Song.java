@@ -4,11 +4,13 @@ public class Song {
     private int id;
     private String title;
     private String author;
+    private String coverart;
 
-    public Song(int id, String title, String author) {
+    public Song(int id, String title, String author, String coverart) {
         this.id = id;
         this.title = title;
         this.author = author;
+        this.coverart = coverart;
     }
 
     public int getId() {
@@ -34,6 +36,8 @@ public class Song {
     public void setAuthor(String author) {
         this.author = author;
     }
+
+    public String getCoverart() { return coverart; }
 
 }
 
