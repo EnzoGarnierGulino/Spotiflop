@@ -81,7 +81,7 @@ public class MainActivity extends AppCompatActivity {
         binding = ActivityMainBinding.inflate(getLayoutInflater());
         setContentView(binding.getRoot());
         songbar = findViewById(R.id.songbar);
-        songbar.setVisibility(View.INVISIBLE);
+
 
         setSupportActionBar(binding.toolbar);
         NavController navController = Navigation.findNavController(this, R.id.nav_host_fragment_content_main);
@@ -101,7 +101,7 @@ public class MainActivity extends AppCompatActivity {
         try {
             String[] customArgs = new String[]{"--Ice.MessageSizeMax=0"};
             communicator = com.zeroc.Ice.Util.initialize(customArgs);
-            com.zeroc.Ice.ObjectPrx base = communicator.stringToProxy("SimplePrinter:tcp -h 192.168.1.12 -p 10000");
+            com.zeroc.Ice.ObjectPrx base = communicator.stringToProxy("SimplePrinter:tcp -h 192.168.1.43 -p 10000");
             PrinterPrx printer = PrinterPrx.checkedCast(base);
             if (printer == null) {
                 throw new Error("Invalid proxy");

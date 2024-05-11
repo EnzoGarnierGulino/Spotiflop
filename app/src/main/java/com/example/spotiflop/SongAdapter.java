@@ -2,8 +2,11 @@ package com.example.spotiflop;
 
 import static android.os.SystemClock.sleep;
 
+import android.app.Activity;
 import android.content.Context;
 import android.net.Uri;
+import android.os.Handler;
+import android.os.Looper;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
@@ -21,6 +24,8 @@ import org.videolan.libvlc.Media;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
+import java.util.Timer;
+import java.util.TimerTask;
 
 import Demo.PrinterPrx;
 import Demo.StreamingInfo;
@@ -31,61 +36,89 @@ public class SongAdapter extends RecyclerView.Adapter<SongAdapter.ViewHolder> {
     private org.videolan.libvlc.MediaPlayer mediaPlayer;
     private boolean streaming = false;
     private PrinterPrx printerPrx;
+    private Timer endOfSongDetectionTimer = new Timer();
     private Thread endOfSongDetectionThread;
     protected BottomAppBar songbar;
+    private String streamURL;
+    private TextView songName;
+    private TextView bottomBarButton;
+    private boolean hasPlayed = false;
+
 
     public SongAdapter(ArrayList<Song> songs, BottomAppBar songbar, Context context, PrinterPrx printerPrx) {
         SongAdapter.songs = songs;
         libVLC = new LibVLC(context, new ArrayList<String>());
         this.songbar = songbar;
+        songName = songbar.findViewById(R.id.songName);
+        songName.setText("No song playing");
+        bottomBarButton = songbar.findViewById(R.id.playPause);
+        bottomBarButton.setText("▶️");
         mediaPlayer = new org.videolan.libvlc.MediaPlayer(libVLC);
         this.printerPrx = printerPrx;
+
+        bottomBarButton.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                if (!hasPlayed) {
+                    return;
+                }
+                if (streaming) {
+                    bottomBarButton.setText("▶️");
+                    printerPrx.playPauseMusic();
+                    if (endOfSongDetectionThread != null) {
+                        endOfSongDetectionThread.interrupt();
+                    }
+                    streaming = false;
+                    endOfSongDetectionTimer.cancel();
+                    new Thread(new Runnable() {
+                        @Override
+                        public void run() {
+                            mediaPlayer.pause();
+                        }
+                    }).start();
+                } else {
+                    streaming = true;
+                    setupMediaPlayer(streamURL);
+                    mediaPlayer.play();
+                    bottomBarButton.setText("⏸️");
+                    long duration = printerPrx.playPauseMusic();
+                    endOfSongDetectionTimer.cancel();
+                    endOfSongDetectionTimer = new Timer();
+                    endOfSongDetectionTimer.schedule(new TimerTask() {
+                        @Override
+                        public void run() {
+                            setupEndSongDetection();
+                        }
+                    }, duration);
+                }
+            }
+        });
     }
 
     public class ViewHolder extends RecyclerView.ViewHolder {
         public TextView textViewTitle;
         public TextView textViewAuthor;
         public Button playButton;
-        public TextView songName;
-        public TextView bottomBarButton;
+
 
         public ViewHolder(View itemView) {
             super(itemView);
             textViewTitle = itemView.findViewById(R.id.textViewTitle);
             textViewAuthor = itemView.findViewById(R.id.textViewAuthor);
             playButton = itemView.findViewById(R.id.playButton);
-            songName = songbar.findViewById(R.id.songName);
-            bottomBarButton = songbar.findViewById(R.id.playPause);
 
             playButton.setOnClickListener(new View.OnClickListener() {
                 @Override
                 public void onClick(View v) {
-                    // Get the position of the clicked item
                     int position = getAdapterPosition();
-                    // Check if the position is valid (RecyclerView.NO_POSITION indicates a deleted item)
                     if (position != RecyclerView.NO_POSITION) {
                         Song clickedSong = songs.get(position);
-                        songbar.setVisibility(View.VISIBLE);
                         songName.setText(clickedSong.getTitle());
-                        System.out.println("clicked on play element : " + clickedSong.getTitle());
                         playSong(clickedSong.getTitle());
                     }
                 }
             });
 
-            bottomBarButton.setOnClickListener(new View.OnClickListener() {
-                @Override
-                public void onClick(View v) {
-                    System.out.println("PAUSE BOTTOM BAR");
-                    if (streaming) {
-                        streaming = false;
-                        bottomBarButton.setText("▶️");
-                    } else {
-                        streaming = true;
-                        bottomBarButton.setText("⏸️");
-                    }
-                }
-            });
         }
     }
 
@@ -99,6 +132,7 @@ public class SongAdapter extends RecyclerView.Adapter<SongAdapter.ViewHolder> {
     }
 
     public void playSong(String title) {
+        hasPlayed = true;
         if (streaming) {
             new Thread(new Runnable() {
                 @Override
@@ -107,28 +141,46 @@ public class SongAdapter extends RecyclerView.Adapter<SongAdapter.ViewHolder> {
                 }
             }).start();
             streaming = false;
+            bottomBarButton.setText("▶️");
             return;
         }
         StreamingInfo info = printerPrx.playMusic(title);
         System.out.println("url : " + info.url + " duration : " + info.duration + " ip : " + info.clientIP);
+        streamURL = info.url;
         if (!streaming) {
-            setupMediaPlayer(info.url);
+            setupMediaPlayer(streamURL);
             mediaPlayer.play();
+            bottomBarButton.setText("⏸️");
             streaming = true;
             long durationMS = info.duration;
 
-            if (endOfSongDetectionThread != null) {
-                endOfSongDetectionThread.interrupt();
-            }
-            endOfSongDetectionThread = new Thread(() -> startEndSongDetection(durationMS));
-            endOfSongDetectionThread.start();
+            endOfSongDetectionTimer.cancel();
+            endOfSongDetectionTimer = new Timer();
+            endOfSongDetectionTimer.schedule(new TimerTask() {
+                @Override
+                public void run() {
+                    setupEndSongDetection();
+                }
+            }, durationMS);
+
+
         }
     }
 
-    private void startEndSongDetection(long durationMS) {
-        sleep(durationMS);
+    private void setupEndSongDetection() {
+        if (endOfSongDetectionThread != null) {
+            endOfSongDetectionThread.interrupt();
+        }
+        endOfSongDetectionThread = new Thread(() -> startEndSongDetection());
+        endOfSongDetectionThread.start();
+    }
+
+    private void startEndSongDetection() {
         List<Integer> list = new ArrayList<>();
         while (true) {
+            if (Thread.currentThread().isInterrupted()) {
+                break;
+            }
             int readBytes = Objects.requireNonNull(mediaPlayer.getMedia()).getStats().demuxReadBytes;
             if (!list.isEmpty() && readBytes != 0 && readBytes == list.get(list.size() - 1)) {
                 list.add(readBytes);
@@ -144,8 +196,20 @@ public class SongAdapter extends RecyclerView.Adapter<SongAdapter.ViewHolder> {
     }
 
     private void onSongFinished() {
-        System.out.println("=========================================Song Finished=========================================");
+        if (Thread.currentThread().isInterrupted()) {
+            return;
+        }
+        System.out.println("Song finished");
+        hasPlayed = false;
         streaming = false;
+        Handler handler = new Handler(Looper.getMainLooper());
+        handler.post(new Runnable() {
+            @Override
+            public void run() {
+                songName.setText("No song playing");
+                bottomBarButton.setText("▶️");
+            }
+        });
         new Thread(new Runnable() {
             @Override
             public void run() {
