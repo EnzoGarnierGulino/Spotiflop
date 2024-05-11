@@ -41,26 +41,6 @@ public class SongAdapter extends RecyclerView.Adapter<SongAdapter.ViewHolder> {
         mediaPlayer = new org.videolan.libvlc.MediaPlayer(libVLC);
         this.printerPrx = printerPrx;
 
-        mediaPlayer.setEventListener(new org.videolan.libvlc.MediaPlayer.EventListener() {
-            @Override
-            public void onEvent(org.videolan.libvlc.MediaPlayer.Event event) {
-                switch (event.type) {
-                    case org.videolan.libvlc.MediaPlayer.Event.EndReached:
-                        System.out.println("=========================================EndReached=========================================");
-                        break;
-                    case MediaPlayer.Event.Paused:
-                        System.out.println("=========================================Paused=========================================");
-                        break;
-                    case MediaPlayer.Event.Stopped:
-                        System.out.println("=========================================Stopped=========================================");
-                        break;
-                    case MediaPlayer.Event.Playing:
-                        System.out.println("=========================================Playing=========================================");
-                        break;
-                }
-            }
-        });
-
     }
 
     public class ViewHolder extends RecyclerView.ViewHolder {
