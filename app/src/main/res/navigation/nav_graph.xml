@@ -7,7 +7,7 @@
 
     <fragment
         android:id="@+id/FirstFragment"
-        android:name="com.example.spotiflop.FirstFragment"
+        android:name="com.example.spotiflop.MainPage"
         android:label="@string/first_fragment_label"
-        tools:layout="@layout/fragment_first"/>
+        tools:layout="@layout/main_page"/>
 </navigation>

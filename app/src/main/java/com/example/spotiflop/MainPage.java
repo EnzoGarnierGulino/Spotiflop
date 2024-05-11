@@ -4,21 +4,19 @@ import android.os.Bundle;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
-import android.widget.TextView;
 
 import androidx.annotation.NonNull;
 import androidx.fragment.app.Fragment;
-import androidx.navigation.fragment.NavHostFragment;
 
-import com.example.spotiflop.databinding.FragmentFirstBinding;
+import com.example.spotiflop.databinding.MainPageBinding;
 
-public class FirstFragment extends Fragment {
-    private FragmentFirstBinding binding;
+public class MainPage extends Fragment {
+    private MainPageBinding binding;
 
     @Override
     public View onCreateView(@NonNull LayoutInflater inflater, ViewGroup container,
             Bundle savedInstanceState) {
-        binding = FragmentFirstBinding.inflate(inflater, container, false);
+        binding = MainPageBinding.inflate(inflater, container, false);
         return binding.getRoot();
     }
 

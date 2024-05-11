@@ -2,7 +2,6 @@ package com.example.spotiflop;
 
 import static android.os.SystemClock.sleep;
 
-import android.app.Activity;
 import android.content.Context;
 import android.net.Uri;
 import android.os.Handler;
@@ -10,7 +9,6 @@ import android.os.Looper;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
-import android.widget.Button;
 import android.widget.ImageView;
 import android.widget.TextView;
 
@@ -31,6 +29,7 @@ import java.util.TimerTask;
 import Demo.PrinterPrx;
 import Demo.StreamingInfo;
 
+import com.google.android.material.floatingactionbutton.FloatingActionButton;
 import com.squareup.picasso.Picasso;
 
 public class SongAdapter extends RecyclerView.Adapter<SongAdapter.ViewHolder> {
@@ -44,8 +43,10 @@ public class SongAdapter extends RecyclerView.Adapter<SongAdapter.ViewHolder> {
     protected BottomAppBar songbar;
     private String streamURL;
     private TextView songName;
-    private TextView bottomBarButton;
     private boolean hasPlayed = false;
+    private FloatingActionButton playPauseButton;
+    private final int playImg = R.drawable.play_img;
+    private final int pauseImg = R.drawable.pause_img;
 
 
     public SongAdapter(ArrayList<Song> songs, BottomAppBar songbar, Context context, PrinterPrx printerPrx) {
@@ -54,19 +55,18 @@ public class SongAdapter extends RecyclerView.Adapter<SongAdapter.ViewHolder> {
         this.songbar = songbar;
         songName = songbar.findViewById(R.id.songName);
         songName.setText("No song playing");
-        bottomBarButton = songbar.findViewById(R.id.playPause);
-        bottomBarButton.setText("▶️");
+        playPauseButton = songbar.findViewById(R.id.playPauseButton);
         mediaPlayer = new org.videolan.libvlc.MediaPlayer(libVLC);
         this.printerPrx = printerPrx;
 
-        bottomBarButton.setOnClickListener(new View.OnClickListener() {
+        playPauseButton.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
                 if (!hasPlayed) {
                     return;
                 }
                 if (streaming) {
-                    bottomBarButton.setText("▶️");
+                    playPauseButton.setImageResource(playImg);
                     printerPrx.playPauseMusic();
                     if (endOfSongDetectionThread != null) {
                         endOfSongDetectionThread.interrupt();
@@ -83,7 +83,7 @@ public class SongAdapter extends RecyclerView.Adapter<SongAdapter.ViewHolder> {
                     streaming = true;
                     setupMediaPlayer(streamURL);
                     mediaPlayer.play();
-                    bottomBarButton.setText("⏸️");
+                    playPauseButton.setImageResource(pauseImg);
                     long duration = printerPrx.playPauseMusic();
                     endOfSongDetectionTimer.cancel();
                     endOfSongDetectionTimer = new Timer();
@@ -144,8 +144,7 @@ public class SongAdapter extends RecyclerView.Adapter<SongAdapter.ViewHolder> {
                 }
             }).start();
             streaming = false;
-            bottomBarButton.setText("▶️");
-            return;
+            playPauseButton.setImageResource(playImg);
         }
         StreamingInfo info = printerPrx.playMusic(title);
         System.out.println("url : " + info.url + " duration : " + info.duration + " ip : " + info.clientIP);
@@ -153,7 +152,7 @@ public class SongAdapter extends RecyclerView.Adapter<SongAdapter.ViewHolder> {
         if (!streaming) {
             setupMediaPlayer(streamURL);
             mediaPlayer.play();
-            bottomBarButton.setText("⏸️");
+            playPauseButton.setImageResource(pauseImg);
             streaming = true;
             long durationMS = info.duration;
 
@@ -208,7 +207,7 @@ public class SongAdapter extends RecyclerView.Adapter<SongAdapter.ViewHolder> {
             @Override
             public void run() {
                 songName.setText("No song playing");
-                bottomBarButton.setText("▶️");
+                playPauseButton.setImageResource(playImg);
             }
         });
         new Thread(new Runnable() {
@@ -231,7 +230,7 @@ public class SongAdapter extends RecyclerView.Adapter<SongAdapter.ViewHolder> {
     public void onBindViewHolder(ViewHolder holder, int position) {
         Song song = songs.get(position);
         holder.textViewTitle.setText(song.getTitle());
-        holder.textViewAuthor.setText(song.getAuthor());
+        holder.textViewAuthor.setText("By " + song.getAuthor());
         Picasso.get().load(song.getCoverart()).into(holder.coverart);
     }
 
