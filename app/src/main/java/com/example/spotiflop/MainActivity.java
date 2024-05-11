@@ -9,6 +9,7 @@ import android.media.AudioManager;
 import android.net.Uri;
 import android.os.Bundle;
 
+import com.google.android.material.bottomappbar.BottomAppBar;
 import com.google.android.material.snackbar.Snackbar;
 
 import androidx.annotation.NonNull;
@@ -17,8 +18,10 @@ import androidx.appcompat.app.AppCompatActivity;
 
 import android.speech.RecognizerIntent;
 import android.util.Log;
+import android.view.LayoutInflater;
 import android.view.View;
 
+import androidx.constraintlayout.widget.ConstraintLayout;
 import androidx.fragment.app.Fragment;
 import androidx.media3.common.MediaItem;
 import androidx.media3.common.util.UnstableApi;
@@ -60,12 +63,13 @@ import java.util.Objects;
 import Demo.PrinterPrx;
 
 public class MainActivity extends AppCompatActivity {
-
     private AppBarConfiguration appBarConfiguration;
     private ActivityMainBinding binding;
     private ArrayList<Song> songs;
     private RecyclerView recyclerView;
     private SongAdapter adapter;
+
+    private BottomAppBar songbar;
     private static PrinterPrx printerPrx;
     private static com.zeroc.Ice.Communicator communicator;
     private static final int REQUEST_RECORD_AUDIO_PERMISSION = 200;
@@ -76,9 +80,10 @@ public class MainActivity extends AppCompatActivity {
 
         binding = ActivityMainBinding.inflate(getLayoutInflater());
         setContentView(binding.getRoot());
+        songbar = findViewById(R.id.songbar);
+        songbar.setVisibility(View.INVISIBLE);
 
         setSupportActionBar(binding.toolbar);
-
         NavController navController = Navigation.findNavController(this, R.id.nav_host_fragment_content_main);
         appBarConfiguration = new AppBarConfiguration.Builder(navController.getGraph()).build();
         NavigationUI.setupActionBarWithNavController(this, navController, appBarConfiguration);
@@ -96,7 +101,7 @@ public class MainActivity extends AppCompatActivity {
         try {
             String[] customArgs = new String[]{"--Ice.MessageSizeMax=0"};
             communicator = com.zeroc.Ice.Util.initialize(customArgs);
-            com.zeroc.Ice.ObjectPrx base = communicator.stringToProxy("SimplePrinter:tcp -h 192.168.1.43 -p 10000");
+            com.zeroc.Ice.ObjectPrx base = communicator.stringToProxy("SimplePrinter:tcp -h 192.168.1.12 -p 10000");
             PrinterPrx printer = PrinterPrx.checkedCast(base);
             if (printer == null) {
                 throw new Error("Invalid proxy");
@@ -130,7 +135,7 @@ public class MainActivity extends AppCompatActivity {
     private void setupRecyclerView() {
         recyclerView = findViewById(R.id.recyclerView);
         recyclerView.setLayoutManager(new LinearLayoutManager(this));
-        adapter = new SongAdapter(songs, this, printerPrx);
+        adapter = new SongAdapter(songs, songbar, this, printerPrx);
         recyclerView.setAdapter(adapter);
     }
 
