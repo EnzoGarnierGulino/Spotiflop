@@ -38,7 +38,6 @@ import java.io.InputStreamReader;
 import java.net.HttpURLConnection;
 import java.net.URL;
 import java.util.ArrayList;
-import java.util.Locale;
 
 import Demo.PrinterPrx;
 
@@ -48,7 +47,6 @@ public class MainActivity extends AppCompatActivity {
     private ArrayList<Song> songs;
     private RecyclerView recyclerView;
     private SongAdapter songAdapter;
-
     private BottomAppBar songbar;
     private static PrinterPrx printerPrx;
     private static com.zeroc.Ice.Communicator communicator;
@@ -71,7 +69,7 @@ public class MainActivity extends AppCompatActivity {
         binding.fab.setOnClickListener(new View.OnClickListener() {
             @OptIn(markerClass = UnstableApi.class) @Override
             public void onClick(View view) {
-                Snackbar.make(view, "Parlez !", Snackbar.LENGTH_LONG)
+                Snackbar.make(view, "Speak now !", Snackbar.LENGTH_LONG)
                         .setAnchorView(R.id.fab)
                         .setAction("Action", null).show();
                 startRecording();
@@ -81,7 +79,7 @@ public class MainActivity extends AppCompatActivity {
         try {
             String[] customArgs = new String[]{"--Ice.MessageSizeMax=0"};
             communicator = com.zeroc.Ice.Util.initialize(customArgs);
-            com.zeroc.Ice.ObjectPrx base = communicator.stringToProxy("SimplePrinter:tcp -h 192.168.1.43 -p 10000");
+            com.zeroc.Ice.ObjectPrx base = communicator.stringToProxy("SimplePrinter:tcp -h 192.168.1.12 -p 10000");
             PrinterPrx printer = PrinterPrx.checkedCast(base);
             if (printer == null) {
                 throw new Error("Invalid proxy");
@@ -125,13 +123,13 @@ public class MainActivity extends AppCompatActivity {
         Intent intent = new Intent(RecognizerIntent.ACTION_RECOGNIZE_SPEECH);
         intent.putExtra(RecognizerIntent.EXTRA_LANGUAGE_MODEL,
                 RecognizerIntent.LANGUAGE_MODEL_FREE_FORM);
-        intent.putExtra(RecognizerIntent.EXTRA_LANGUAGE, Locale.getDefault());
-        intent.putExtra(RecognizerIntent.EXTRA_PROMPT, "Parlez maintenant...");
+        intent.putExtra(RecognizerIntent.EXTRA_LANGUAGE, "en-US");
+        intent.putExtra(RecognizerIntent.EXTRA_PROMPT, "Speak now !");
         try {
             startActivityForResult(intent, REQUEST_RECORD_AUDIO_PERMISSION);
         } catch (ActivityNotFoundException e) {
             Toast.makeText(getApplicationContext(),
-                    "Reconnaissance vocale non prise en charge sur cet appareil.",
+                    "Speak recognition isn't working on this device...",
                     Toast.LENGTH_SHORT).show();
         }
     }
@@ -151,78 +149,62 @@ public class MainActivity extends AppCompatActivity {
     }
 
     private void makeRequest(String transcription) {
-        Thread thread = new Thread(new Runnable() {
-            @Override
-            public void run() {
-                try {
+        Thread thread = new Thread(() -> {
+            try {
+                Snackbar.make(binding.getRoot(), "Waiting for the server's response...", Snackbar.LENGTH_LONG)
+                        .setAnchorView(R.id.fab)
+                        .setAction("Action", null).show();
 
+                String url = "http://82.66.48.233:42690/getObjectAndSubject?query=" + transcription;
 
-                    Snackbar.make(binding.getRoot(), "Traitement de votre demande...", Snackbar.LENGTH_LONG)
-                            .setAnchorView(R.id.fab)
-                            .setAction("Action", null).show();
+                URL serverUrl = new URL(url);
+                HttpURLConnection conn = (HttpURLConnection) serverUrl.openConnection();
 
+                conn.setRequestMethod("POST");
+                conn.setRequestProperty("Content-Type", "text/plain; charset=UTF-8");
+                conn.setRequestProperty("Accept", "application/json");
+                conn.setDoOutput(true);
 
-                    String url = "http://82.66.48.233:42690/getObjectAndSubject?query=" + transcription;
+                int responseCode = conn.getResponseCode();
+                Log.d("HTTP Response Code", String.valueOf(responseCode));
 
-                    URL serverUrl = new URL(url);
-
-                    HttpURLConnection conn = (HttpURLConnection) serverUrl.openConnection();
-
-                    conn.setRequestMethod("POST");
-                    conn.setRequestProperty("Content-Type", "text/plain; charset=UTF-8");
-                    conn.setRequestProperty("Accept", "application/json");
-                    conn.setDoOutput(true);
-
-                    int responseCode = conn.getResponseCode();
-                    Log.d("HTTP Response Code", String.valueOf(responseCode));
-
-                    BufferedReader in = new BufferedReader(new InputStreamReader(conn.getInputStream()));
-                    StringBuilder response = new StringBuilder();
-                    String inputLine;
-                    while ((inputLine = in.readLine()) != null) {
-                        response.append(inputLine);
-                    }
-                    in.close();
-
-                    JSONObject jsonResponse = new JSONObject(response.toString());
-                    String action = jsonResponse.getString("action");
-                    String object = jsonResponse.getString("sujet");
-
-                    LLMResponse llmResponse = new LLMResponse(action, object);
-
-                    songAdapter.processAction(llmResponse);
-
-                    conn.disconnect();
-                } catch (IOException | JSONException e) {
-                    e.printStackTrace();
+                BufferedReader in = new BufferedReader(new InputStreamReader(conn.getInputStream()));
+                StringBuilder response = new StringBuilder();
+                String inputLine;
+                while ((inputLine = in.readLine()) != null) {
+                    response.append(inputLine);
                 }
+                in.close();
+
+                JSONObject jsonResponse = new JSONObject(response.toString());
+                String action = jsonResponse.getString("action");
+                String object = jsonResponse.getString("sujet");
+                LLMResponse llmResponse = new LLMResponse(action, object);
+
+                songAdapter.processAction(llmResponse);
+
+                conn.disconnect();
+            } catch (IOException | JSONException e) {
+                e.printStackTrace();
             }
         });
         thread.start();
     }
 
-
     @Override
     public boolean onCreateOptionsMenu(Menu menu) {
-        // Inflate the menu; this adds items to the action bar if it is present.
         getMenuInflater().inflate(R.menu.menu_main, menu);
         return true;
     }
 
     @Override
     public boolean onOptionsItemSelected(MenuItem item) {
-        // Handle action bar item clicks here. The action bar will
-        // automatically handle clicks on the Home/Up button, so long
-        // as you specify a parent activity in AndroidManifest.xml.
-        int id = item.getItemId();
-
         return super.onOptionsItemSelected(item);
     }
 
     @Override
     public boolean onSupportNavigateUp() {
         NavController navController = Navigation.findNavController(this, R.id.nav_host_fragment_content_main);
-        return NavigationUI.navigateUp(navController, appBarConfiguration)
-                || super.onSupportNavigateUp();
+        return NavigationUI.navigateUp(navController, appBarConfiguration) || super.onSupportNavigateUp();
     }
 }

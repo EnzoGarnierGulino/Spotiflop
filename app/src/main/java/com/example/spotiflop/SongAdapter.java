@@ -9,6 +9,7 @@ import android.os.Looper;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
+import android.widget.Button;
 import android.widget.ImageView;
 import android.widget.TextView;
 
@@ -44,6 +45,8 @@ public class SongAdapter extends RecyclerView.Adapter<SongAdapter.ViewHolder> {
     protected BottomAppBar songbar;
     private String streamURL;
     private TextView songName;
+    private TextView nextSong;
+    private ArrayList<Song> queue = new ArrayList<Song>();
     private boolean hasPlayed = false;
     private FloatingActionButton playPauseButton;
     private final int playImg = R.drawable.play_img;
@@ -55,6 +58,7 @@ public class SongAdapter extends RecyclerView.Adapter<SongAdapter.ViewHolder> {
         libVLC = new LibVLC(context, new ArrayList<String>());
         this.songbar = songbar;
         songName = songbar.findViewById(R.id.songName);
+        nextSong = songbar.findViewById(R.id.nextSong);
         songName.setText("No song playing");
         playPauseButton = songbar.findViewById(R.id.playPauseButton);
         mediaPlayer = new org.videolan.libvlc.MediaPlayer(libVLC);
@@ -103,13 +107,14 @@ public class SongAdapter extends RecyclerView.Adapter<SongAdapter.ViewHolder> {
         public TextView textViewTitle;
         public TextView textViewAuthor;
         public ImageView coverart;
-
+        public Button addToQueue;
 
         public ViewHolder(View itemView) {
             super(itemView);
             textViewTitle = itemView.findViewById(R.id.textViewTitle);
             textViewAuthor = itemView.findViewById(R.id.textViewAuthor);
             coverart = itemView.findViewById(R.id.coverart);
+            addToQueue = itemView.findViewById(R.id.addToQueue);
 
             coverart.setOnClickListener(new View.OnClickListener() {
                 @Override
@@ -123,15 +128,24 @@ public class SongAdapter extends RecyclerView.Adapter<SongAdapter.ViewHolder> {
                 }
             });
 
+            addToQueue.setOnClickListener(new View.OnClickListener() {
+                @Override
+                public void onClick(View v) {
+                    int position = getAdapterPosition();
+                    if (position != RecyclerView.NO_POSITION) {
+                        Song clickedSong = songs.get(position);
+                        queue.add(clickedSong);
+                        nextSong.setText("- Next: " + queue.get(0).getTitle());
+                        Snackbar.make(songbar, "Song successfully added to queue !", Snackbar.LENGTH_SHORT).show();
+                    }
+                }
+            });
         }
     }
 
     private void setupMediaPlayer(String url) {
         mediaPlayer = new org.videolan.libvlc.MediaPlayer(libVLC);
         Media media = new Media(libVLC, Uri.parse(url));
-//        media.setDefaultMediaPlayerOptions();
-//        media.addOption("--network-caching=<1000ms>");
-//        media.addOption("--no-video");
         mediaPlayer.setMedia(media);
     }
 
@@ -157,13 +171,39 @@ public class SongAdapter extends RecyclerView.Adapter<SongAdapter.ViewHolder> {
         StreamingInfo info = printerPrx.playMusic(queryName);
         if (info == null) {
             Snackbar.make(songbar, "Song not found", Snackbar.LENGTH_LONG).show();
+            Handler handler = new Handler(Looper.getMainLooper());
+            handler.post(new Runnable() {
+                @Override
+                public void run() {
+                    songName.setText("No song playing");
+                }
+            });
             return;
         }
+        Handler handler2 = new Handler(Looper.getMainLooper());
+        handler2.post(new Runnable() {
+            @Override
+            public void run() {
+                String[] words = queryName.split("_");
+                StringBuilder transformedString = new StringBuilder();
+                for (String word : words) {
+                    if (word.length() > 0) {
+                        transformedString.append(Character.toUpperCase(word.charAt(0)))
+                                .append(word.substring(1))
+                                .append(" ");
+                    }
+                }
+                String result = transformedString.toString().trim();
+                if (!result.isEmpty()) {
+                    songName.setText(result);
+                }
+            }
+        });
         System.out.println("url : " + info.url + " duration : " + info.duration + " ip : " + info.clientIP);
         streamURL = info.url;
         if (!streaming) {
-            setupMediaPlayer(streamURL);
             sleep(500);
+            setupMediaPlayer(streamURL);
             mediaPlayer.play();
             Handler handler = new Handler(Looper.getMainLooper());
             handler.post(new Runnable() {
@@ -225,8 +265,19 @@ public class SongAdapter extends RecyclerView.Adapter<SongAdapter.ViewHolder> {
         handler.post(new Runnable() {
             @Override
             public void run() {
-                songName.setText("No song playing");
-                playPauseButton.setImageResource(playImg);
+                if (!queue.isEmpty()) {
+                    playSong(queue.get(0).getQueryName());
+                    songName.setText(queue.get(0).getTitle());
+                    queue.remove(0);
+                    if (!queue.isEmpty()) {
+                        nextSong.setText("- Next: " + queue.get(0).getTitle());
+                    } else {
+                        nextSong.setText("");
+                    }
+                } else {
+                    songName.setText("No song playing");
+                    playPauseButton.setImageResource(playImg);
+                }
             }
         });
         new Thread(new Runnable() {

@@ -32,9 +32,7 @@
         android:id="@+id/fab"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:layout_gravity="bottom|end"
-        android:layout_marginEnd="@dimen/fab_margin"
-        android:layout_marginBottom="12dp"
+        android:layout_gravity="top|end"
         app:srcCompat="@android:drawable/ic_btn_speak_now" />
 
     <androidx.coordinatorlayout.widget.CoordinatorLayout
@@ -62,6 +60,17 @@
                 app:layout_constraintBottom_toBottomOf="parent"
                 app:layout_constraintStart_toStartOf="parent"
                 app:layout_constraintTop_toTopOf="parent" />
+
+            <TextView
+                android:id="@+id/nextSong"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginStart="8dp"
+                android:text=""
+                android:textColor="@android:color/white"
+                android:textSize="16sp"
+                app:layout_constraintStart_toStartOf="parent"
+                app:layout_constraintTop_toTopOf="@id/songName" />
 
             <com.google.android.material.floatingactionbutton.FloatingActionButton
                 android:id="@+id/playPauseButton"
