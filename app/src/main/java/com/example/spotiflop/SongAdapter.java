@@ -206,7 +206,6 @@ public class SongAdapter extends RecyclerView.Adapter<SongAdapter.ViewHolder> {
                 }
             }
         });
-        System.out.println("url : " + info.url + " duration : " + info.duration + " ip : " + info.clientIP);
         streamURL = info.url;
         if (!streaming) {
             sleep(500);
@@ -250,7 +249,6 @@ public class SongAdapter extends RecyclerView.Adapter<SongAdapter.ViewHolder> {
             int readBytes = Objects.requireNonNull(mediaPlayer.getMedia()).getStats().demuxReadBytes;
             if (!list.isEmpty() && readBytes != 0 && readBytes == list.get(list.size() - 1)) {
                 list.add(readBytes);
-                System.out.println(list);
                 onSongFinished();
                 break;
             }
@@ -265,7 +263,6 @@ public class SongAdapter extends RecyclerView.Adapter<SongAdapter.ViewHolder> {
         if (Thread.currentThread().isInterrupted()) {
             return;
         }
-        System.out.println("Song finished");
         hasPlayed = false;
         streaming = false;
         Handler handler = new Handler(Looper.getMainLooper());
@@ -296,11 +293,19 @@ public class SongAdapter extends RecyclerView.Adapter<SongAdapter.ViewHolder> {
     }
 
     public void processAction(LLMResponse llmResponse) {
+        String parsedSong = llmResponse.getSubject().replace(" ", "_").toLowerCase();
+        parsedSong = parsedSong.replace("'", "");
         if (llmResponse.getAction().equals("play")) {
-            String parsedSong = llmResponse.getSubject().replace(" ", "_").toLowerCase();
+            if (!printerPrx.doesSongExist(parsedSong)) {
+                Snackbar.make(songbar, "Song " + llmResponse.getSubject() + " not found :(", Snackbar.LENGTH_LONG).show();
+                return;
+            }
             playSong(parsedSong);
         }
-        if (llmResponse.getAction().equals("pause")) {
+        else if (llmResponse.getAction().equals("pause")) {
+            if (!hasPlayed) {
+                return;
+            }
             if (streaming) {
                 Handler handler = new Handler(Looper.getMainLooper());
                 handler.post(new Runnable() {
@@ -321,6 +326,87 @@ public class SongAdapter extends RecyclerView.Adapter<SongAdapter.ViewHolder> {
                         mediaPlayer.pause();
                     }
                 }).start();
+            }
+            else {
+                streaming = true;
+                setupMediaPlayer(streamURL);
+                mediaPlayer.play();
+                Handler handler = new Handler(Looper.getMainLooper());
+                handler.post(new Runnable() {
+                    @Override
+                    public void run() {
+                        playPauseButton.setImageResource(pauseImg);
+                    }
+                });
+                long duration = printerPrx.playPauseMusic();
+                endOfSongDetectionTimer.cancel();
+                endOfSongDetectionTimer = new Timer();
+                endOfSongDetectionTimer.schedule(new TimerTask() {
+                    @Override
+                    public void run() {
+                        setupEndSongDetection();
+                    }
+                }, duration);
+
+            }
+        }
+        else if (llmResponse.getAction().equals("passer")) {
+            if (!queue.isEmpty()) {
+                String songTitle = queue.get(0).getTitle();
+                playSong(queue.get(0).getQueryName());
+                Handler handler = new Handler(Looper.getMainLooper());
+                handler.post(new Runnable() {
+                    @Override
+                    public void run() {
+                        songName.setText(songTitle);
+                    }
+                });
+                queue.remove(0);
+                if (!queue.isEmpty()) {
+                    Handler handler2 = new Handler(Looper.getMainLooper());
+                    handler2.post(new Runnable() {
+                        @Override
+                        public void run() {
+                            nextSong.setText("- Next: " + queue.get(0).getTitle());
+                        }
+                    });
+                } else {
+                    Handler handler3 = new Handler(Looper.getMainLooper());
+                    handler3.post(new Runnable() {
+                        @Override
+                        public void run() {
+                            nextSong.setText("");
+                        }
+                    });
+                }
+            }
+        }
+        else if (llmResponse.getAction().equals("ajouter")) {
+            if (!printerPrx.doesSongExist(parsedSong)) {
+                Snackbar.make(songbar, "Song " + llmResponse.getSubject() + " not found :(", Snackbar.LENGTH_LONG).show();
+                return;
+            }
+            if (queue.isEmpty() && !streaming) {
+                playSong(parsedSong);
+                Handler handler = new Handler(Looper.getMainLooper());
+                handler.post(new Runnable() {
+                    @Override
+                    public void run() {
+                        songName.setText(llmResponse.getSubject());
+                        nextSong.setText("");
+                    }
+                });
+            }
+            else {
+                queue.add(new Song(0, llmResponse.getSubject(), "Unknown", "https://i.imgur.com/7GvQ1bH.png", parsedSong));
+                Handler handler = new Handler(Looper.getMainLooper());
+                handler.post(new Runnable() {
+                    @Override
+                    public void run() {
+                        nextSong.setText("- Next: " + queue.get(0).getTitle());
+                    }
+                });
+                Snackbar.make(songbar, "Song successfully added to queue !", Snackbar.LENGTH_SHORT).show();
             }
         }
     }
