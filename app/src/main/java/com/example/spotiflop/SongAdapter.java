@@ -134,9 +134,16 @@ public class SongAdapter extends RecyclerView.Adapter<SongAdapter.ViewHolder> {
                     int position = getAdapterPosition();
                     if (position != RecyclerView.NO_POSITION) {
                         Song clickedSong = songs.get(position);
-                        queue.add(clickedSong);
-                        nextSong.setText("- Next: " + queue.get(0).getTitle());
-                        Snackbar.make(songbar, "Song successfully added to queue !", Snackbar.LENGTH_SHORT).show();
+                        if (queue.isEmpty() && !streaming) {
+                            playSong(clickedSong.getQueryName());
+                            songName.setText(clickedSong.getTitle());
+                            nextSong.setText("");
+                        }
+                        else {
+                            queue.add(clickedSong);
+                            nextSong.setText("- Next: " + queue.get(0).getTitle());
+                            Snackbar.make(songbar, "Song successfully added to queue !", Snackbar.LENGTH_SHORT).show();
+                        }
                     }
                 }
             });
