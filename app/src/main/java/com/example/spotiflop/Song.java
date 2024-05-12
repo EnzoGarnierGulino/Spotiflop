@@ -5,12 +5,14 @@ public class Song {
     private String title;
     private String author;
     private String coverart;
+    private String queryName;
 
-    public Song(int id, String title, String author, String coverart) {
+    public Song(int id, String title, String author, String coverart, String queryName) {
         this.id = id;
         this.title = title;
         this.author = author;
         this.coverart = coverart;
+        this.queryName = queryName;
     }
 
     public int getId() {
@@ -39,5 +41,8 @@ public class Song {
 
     public String getCoverart() { return coverart; }
 
+    public String getQueryName() {
+        return queryName;
+    }
 }
 

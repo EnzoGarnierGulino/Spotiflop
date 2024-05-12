@@ -1,33 +1,20 @@
 package com.example.spotiflop;
 
 import android.content.ActivityNotFoundException;
-import android.content.Context;
 import android.content.Intent;
-import android.content.pm.PackageManager;
-import android.media.AudioAttributes;
-import android.media.AudioManager;
-import android.net.Uri;
 import android.os.Bundle;
 
 import com.google.android.material.bottomappbar.BottomAppBar;
 import com.google.android.material.snackbar.Snackbar;
 
-import androidx.annotation.NonNull;
 import androidx.annotation.OptIn;
 import androidx.appcompat.app.AppCompatActivity;
 
 import android.speech.RecognizerIntent;
 import android.util.Log;
-import android.view.LayoutInflater;
 import android.view.View;
 
-import androidx.constraintlayout.widget.ConstraintLayout;
-import androidx.fragment.app.Fragment;
-import androidx.media3.common.MediaItem;
 import androidx.media3.common.util.UnstableApi;
-import androidx.media3.exoplayer.ExoPlayer;
-import androidx.media3.exoplayer.rtsp.RtspMediaSource;
-import androidx.media3.exoplayer.source.MediaSource;
 import androidx.navigation.NavController;
 import androidx.navigation.Navigation;
 import androidx.navigation.ui.AppBarConfiguration;
@@ -39,26 +26,19 @@ import com.example.spotiflop.databinding.ActivityMainBinding;
 
 import android.view.Menu;
 import android.view.MenuItem;
-import android.widget.TextView;
 import android.widget.Toast;
 
-import org.videolan.libvlc.LibVLC;
-import org.videolan.libvlc.Media;
 import org.json.JSONArray;
 import org.json.JSONException;
 import org.json.JSONObject;
-import org.videolan.libvlc.MediaPlayer;
-import org.videolan.libvlc.util.VLCVideoLayout;
 
 import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.InputStreamReader;
-import java.io.OutputStream;
 import java.net.HttpURLConnection;
 import java.net.URL;
 import java.util.ArrayList;
 import java.util.Locale;
-import java.util.Objects;
 
 import Demo.PrinterPrx;
 
@@ -67,7 +47,7 @@ public class MainActivity extends AppCompatActivity {
     private ActivityMainBinding binding;
     private ArrayList<Song> songs;
     private RecyclerView recyclerView;
-    private SongAdapter adapter;
+    private SongAdapter songAdapter;
 
     private BottomAppBar songbar;
     private static PrinterPrx printerPrx;
@@ -125,7 +105,8 @@ public class MainActivity extends AppCompatActivity {
                 String title = jsonObject.getString("title");
                 String author = jsonObject.getString("author");
                 String coverart = jsonObject.getString("coverart");
-                songs.add(new Song(id, title, author, coverart));
+                String queryName = jsonObject.getString("queryName");
+                songs.add(new Song(id, title, author, coverart, queryName));
             }
         } catch (JSONException e) {
             e.printStackTrace();
@@ -136,8 +117,8 @@ public class MainActivity extends AppCompatActivity {
     private void setupRecyclerView() {
         recyclerView = findViewById(R.id.recyclerView);
         recyclerView.setLayoutManager(new LinearLayoutManager(this));
-        adapter = new SongAdapter(songs, songbar, this, printerPrx);
-        recyclerView.setAdapter(adapter);
+        songAdapter = new SongAdapter(songs, songbar, this, printerPrx);
+        recyclerView.setAdapter(songAdapter);
     }
 
     private void startRecording() {
@@ -164,7 +145,6 @@ public class MainActivity extends AppCompatActivity {
                     String transcription = result.get(0);
                     Log.d("Transcription", transcription);
                     makeRequest(transcription);
-                    Snackbar.make(binding.getRoot(), transcription, Snackbar.LENGTH_LONG).show();
                 }
             }
         }
@@ -175,28 +155,27 @@ public class MainActivity extends AppCompatActivity {
             @Override
             public void run() {
                 try {
-                    // Define the URL for the request
+
+
+                    Snackbar.make(binding.getRoot(), "Traitement de votre demande...", Snackbar.LENGTH_LONG)
+                            .setAnchorView(R.id.fab)
+                            .setAction("Action", null).show();
+
+
                     String url = "http://82.66.48.233:42690/getObjectAndSubject?query=" + transcription;
 
-                    // Create a URL object from the string URL
                     URL serverUrl = new URL(url);
 
-                    // Create a HttpURLConnection object to open the connection
                     HttpURLConnection conn = (HttpURLConnection) serverUrl.openConnection();
 
-                    // Set the request method to POST
                     conn.setRequestMethod("POST");
-
-                    // Set the content type
                     conn.setRequestProperty("Content-Type", "text/plain; charset=UTF-8");
                     conn.setRequestProperty("Accept", "application/json");
                     conn.setDoOutput(true);
 
-                    // Get the response code
                     int responseCode = conn.getResponseCode();
                     Log.d("HTTP Response Code", String.valueOf(responseCode));
 
-                    // Read the response from the input stream
                     BufferedReader in = new BufferedReader(new InputStreamReader(conn.getInputStream()));
                     StringBuilder response = new StringBuilder();
                     String inputLine;
@@ -205,21 +184,14 @@ public class MainActivity extends AppCompatActivity {
                     }
                     in.close();
 
-                    // Parse the response JSON to extract the action and object
                     JSONObject jsonResponse = new JSONObject(response.toString());
                     String action = jsonResponse.getString("action");
                     String object = jsonResponse.getString("sujet");
 
-                    // Display the action and object (e.g., using a Snackbar)
-                    String message = "Action: " + action + ", Object: " + object;
-                    runOnUiThread(new Runnable() {
-                        @Override
-                        public void run() {
-                            Snackbar.make(binding.getRoot(), message, Snackbar.LENGTH_LONG).show();
-                        }
-                    });
+                    LLMResponse llmResponse = new LLMResponse(action, object);
 
-                    // Disconnect the HttpURLConnection
+                    songAdapter.processAction(llmResponse);
+
                     conn.disconnect();
                 } catch (IOException | JSONException e) {
                     e.printStackTrace();

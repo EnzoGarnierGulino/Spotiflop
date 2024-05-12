@@ -30,6 +30,7 @@ import Demo.PrinterPrx;
 import Demo.StreamingInfo;
 
 import com.google.android.material.floatingactionbutton.FloatingActionButton;
+import com.google.android.material.snackbar.Snackbar;
 import com.squareup.picasso.Picasso;
 
 public class SongAdapter extends RecyclerView.Adapter<SongAdapter.ViewHolder> {
@@ -117,7 +118,7 @@ public class SongAdapter extends RecyclerView.Adapter<SongAdapter.ViewHolder> {
                     if (position != RecyclerView.NO_POSITION) {
                         Song clickedSong = songs.get(position);
                         songName.setText(clickedSong.getTitle());
-                        playSong(clickedSong.getTitle());
+                        playSong(clickedSong.getQueryName());
                     }
                 }
             });
@@ -134,7 +135,7 @@ public class SongAdapter extends RecyclerView.Adapter<SongAdapter.ViewHolder> {
         mediaPlayer.setMedia(media);
     }
 
-    public void playSong(String title) {
+    public void playSong(String queryName) {
         hasPlayed = true;
         if (streaming) {
             new Thread(new Runnable() {
@@ -144,15 +145,33 @@ public class SongAdapter extends RecyclerView.Adapter<SongAdapter.ViewHolder> {
                 }
             }).start();
             streaming = false;
-            playPauseButton.setImageResource(playImg);
+            Handler handler = new Handler(Looper.getMainLooper());
+            handler.post(new Runnable() {
+                @Override
+                public void run() {
+                    playPauseButton.setImageResource(playImg);
+                }
+            });
+
         }
-        StreamingInfo info = printerPrx.playMusic(title);
+        StreamingInfo info = printerPrx.playMusic(queryName);
+        if (info == null) {
+            Snackbar.make(songbar, "Song not found", Snackbar.LENGTH_LONG).show();
+            return;
+        }
         System.out.println("url : " + info.url + " duration : " + info.duration + " ip : " + info.clientIP);
         streamURL = info.url;
         if (!streaming) {
             setupMediaPlayer(streamURL);
+            sleep(500);
             mediaPlayer.play();
-            playPauseButton.setImageResource(pauseImg);
+            Handler handler = new Handler(Looper.getMainLooper());
+            handler.post(new Runnable() {
+                @Override
+                public void run() {
+                    playPauseButton.setImageResource(pauseImg);
+                }
+            });
             streaming = true;
             long durationMS = info.duration;
 
@@ -218,6 +237,35 @@ public class SongAdapter extends RecyclerView.Adapter<SongAdapter.ViewHolder> {
         }).start();
     }
 
+    public void processAction(LLMResponse llmResponse) {
+        if (llmResponse.getAction().equals("play")) {
+            String parsedSong = llmResponse.getSubject().replace(" ", "_").toLowerCase();
+            playSong(parsedSong);
+        }
+        if (llmResponse.getAction().equals("pause")) {
+            if (streaming) {
+                Handler handler = new Handler(Looper.getMainLooper());
+                handler.post(new Runnable() {
+                    @Override
+                    public void run() {
+                        playPauseButton.setImageResource(playImg);
+                    }
+                });
+                printerPrx.playPauseMusic();
+                if (endOfSongDetectionThread != null) {
+                    endOfSongDetectionThread.interrupt();
+                }
+                streaming = false;
+                endOfSongDetectionTimer.cancel();
+                new Thread(new Runnable() {
+                    @Override
+                    public void run() {
+                        mediaPlayer.pause();
+                    }
+                }).start();
+            }
+        }
+    }
 
     @NonNull
     @Override
